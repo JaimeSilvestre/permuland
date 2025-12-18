@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "better-sqlite3": "^12.5.0",
+    "@libsql/client": "^0.15.15",
+    "@vercel/blob": "^2.0.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.562.0",
     "next": "16.0.10",
@@ -20,7 +22,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -1,12 +1,16 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
 import * as schema from './schema';
+import dotenv from 'dotenv';
 
-const globalForDb = globalThis as unknown as {
-    conn: Database.Database | undefined;
-};
+dotenv.config({ path: '.env.local' });
 
-const conn = globalForDb.conn ?? new Database('sqlite.db');
-if (process.env.NODE_ENV !== 'production') globalForDb.conn = conn;
+const url = process.env.TURSO_DATABASE_URL || 'file:sqlite.db';
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-export const db = drizzle(conn, { schema });
+export const client = createClient({
+    url,
+    authToken,
+});
+
+export const db = drizzle(client, { schema });

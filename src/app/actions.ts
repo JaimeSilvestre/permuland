@@ -19,20 +19,29 @@ export async function addPerfume(formData: FormData) {
     let imageUrl = '';
 
     if (image && image.size > 0 && image.name !== 'undefined') {
-        const bytes = await image.arrayBuffer();
-        const buffer = Buffer.from(bytes);
         const filename = `${Date.now()}-${image.name.replace(/\s/g, '-')}`;
-        const uploadDir = join(process.cwd(), 'public', 'uploads');
 
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e) {
-            // ignore
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+            const { put } = await import('@vercel/blob');
+            const blob = await put(filename, image, {
+                access: 'public',
+            });
+            imageUrl = blob.url;
+        } else {
+            const bytes = await image.arrayBuffer();
+            const buffer = Buffer.from(bytes);
+            const uploadDir = join(process.cwd(), 'public', 'uploads');
+
+            try {
+                await mkdir(uploadDir, { recursive: true });
+            } catch (e) {
+                // ignore
+            }
+
+            const path = join(uploadDir, filename);
+            await writeFile(path, buffer);
+            imageUrl = `/uploads/${filename}`;
         }
-
-        const path = join(uploadDir, filename);
-        await writeFile(path, buffer);
-        imageUrl = `/uploads/${filename}`;
     }
 
     await db.insert(perfumes).values({
@@ -58,15 +67,9 @@ export async function getPerfumeById(id: number) {
 }
 
 export async function toggleSotd(id: number) {
-    // Unset all first (assuming only one SOTD allowed)
-    // For simplicity, we fetch all SOTD true and unset them, or just unset all
-    // better-sqlite3 with drizzle might support update with where not id.
-
-    // First, verify if it's already SOTD
     const perfume = await getPerfumeById(id);
     if (!perfume) return;
 
-    // If we are setting it to true, we must unset others
     if (!perfume.sotd) {
         await db.update(perfumes).set({ sotd: false });
     }

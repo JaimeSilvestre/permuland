@@ -10,6 +10,14 @@ const nextConfig: NextConfig = {
   server: {
     allowedDevOrigins: ["localhost:3000", "192.168.1.43:3000"],
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

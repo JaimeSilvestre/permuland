@@ -1,0 +1,77 @@
+'use server'
+
+import { db } from '@/db';
+import { perfumes } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+
+export async function addPerfume(formData: FormData) {
+    const name = formData.get('name') as string;
+    const brand = formData.get('brand') as string;
+    const price = parseFloat(formData.get('price') as string);
+    const rating = parseInt(formData.get('rating') as string);
+    const image = formData.get('image') as File;
+    const description = formData.get('description') as string;
+
+    let imageUrl = '';
+
+    if (image && image.size > 0 && image.name !== 'undefined') {
+        const bytes = await image.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const filename = `${Date.now()}-${image.name.replace(/\s/g, '-')}`;
+        const uploadDir = join(process.cwd(), 'public', 'uploads');
+
+        try {
+            await mkdir(uploadDir, { recursive: true });
+        } catch (e) {
+            // ignore
+        }
+
+        const path = join(uploadDir, filename);
+        await writeFile(path, buffer);
+        imageUrl = `/uploads/${filename}`;
+    }
+
+    await db.insert(perfumes).values({
+        name,
+        brand,
+        price: isNaN(price) ? 0 : price,
+        rating: isNaN(rating) ? 0 : rating,
+        imageUrl,
+        description,
+    });
+
+    revalidatePath('/');
+    redirect('/');
+}
+
+export async function getPerfumes() {
+    return await db.select().from(perfumes).orderBy(perfumes.createdAt);
+}
+
+export async function getPerfumeById(id: number) {
+    const result = await db.select().from(perfumes).where(eq(perfumes.id, id));
+    return result[0];
+}
+
+export async function toggleSotd(id: number) {
+    // Unset all first (assuming only one SOTD allowed)
+    // For simplicity, we fetch all SOTD true and unset them, or just unset all
+    // better-sqlite3 with drizzle might support update with where not id.
+
+    // First, verify if it's already SOTD
+    const perfume = await getPerfumeById(id);
+    if (!perfume) return;
+
+    // If we are setting it to true, we must unset others
+    if (!perfume.sotd) {
+        await db.update(perfumes).set({ sotd: false });
+    }
+
+    await db.update(perfumes).set({ sotd: !perfume.sotd }).where(eq(perfumes.id, id));
+    revalidatePath('/');
+    revalidatePath(`/perfume/${id}`);
+}
